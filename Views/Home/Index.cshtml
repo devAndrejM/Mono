@@ -1,0 +1,30 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="jumbotron" align="center">
+    <h1>Vehicles app</h1>
+    
+        <div class="row">
+            <div class="col-md-12">
+                <img src=@Url.Content("~/Images/car.jpeg") class="img" width="700" height="400" asp-append-version="true"/>                
+            </div>
+        
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4">
+        <h2>Welcome to Vehicles app</h2>
+        <p>
+            Vehicles app allows you to browse vehicles by make and models along with some other cool options.
+        </p>
+    </div>
+    <div class="col-md-4">
+        <p>Browse Vehicle Makes</p>
+        <p><a href="@Url.Action("Index", "VehicleMakes")" class="btn btn-primary btn-large btn-block"> Vehicle Makes</a></p>
+    </div>
+    <div class="col-md-4">
+        <p>Browse Vehicle Model</p>
+        <p><a href="@Url.Action("Index", "VehicleModels")" class="btn btn-primary btn-large btn-block"> Vehicle Models</a></p>
+    </div>
+</div>
