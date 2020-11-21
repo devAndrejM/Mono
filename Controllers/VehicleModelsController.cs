@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Coreapp.Data;
 using Coreapp.Models;
+using Coreapp.Paging;
 
 namespace Coreapp.Controllers
 {
@@ -20,10 +21,46 @@ namespace Coreapp.Controllers
         }
 
         // GET: VehicleModels
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string sortOrder, string searchString, string currentFilter, int? pageNumber)
         {
-            var vehicleDbContext = _context.VehicleModels.Include(v => v.Make);
-            return View(await vehicleDbContext.ToListAsync());
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["MakeSortParm"] = String.IsNullOrEmpty(sortOrder) ? "make_desc" : "";
+            ViewData["AbrvSortParm"] = sortOrder == "Abrv" ? "abrv_desc" : "Abrv";
+
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+            
+            var models = from m in _context.VehicleModels.Include(m => m.Make) select m;
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                models = models.Where(m => m.Name.Contains(searchString)
+                                    || m.Abrv.Contains(searchString)
+                                    || m.Make.Name.Contains(searchString));
+            }
+           
+            models = sortOrder switch
+            {
+                "name_desc" => models.OrderByDescending(m => m.Name),
+                "make_desc" => models.OrderByDescending(m => m.Make),
+                "Abrv" => models.OrderBy(m => m.Abrv),
+                "abrv_desc" => models.OrderByDescending(m => m.Abrv),
+                _ => models.OrderBy(m => m.Name),
+            };
+            int pageSize = 5;
+            return View(await PaginatedList<VehicleModel>.CreateAsync(models.AsNoTracking(), pageNumber ?? 1, pageSize));
+
+
+
+
         }
 
         // GET: VehicleModels/Details/5
@@ -36,6 +73,7 @@ namespace Coreapp.Controllers
 
             var vehicleModel = await _context.VehicleModels
                 .Include(v => v.Make)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (vehicleModel == null)
             {
@@ -57,13 +95,23 @@ namespace Coreapp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,MakeId,Name,Abrv")] VehicleModel vehicleModel)
+        public async Task<IActionResult> Create([Bind("MakeId,Name,Abrv")] VehicleModel vehicleModel)
         {
-            if (ModelState.IsValid)
+            try
             {
-                _context.Add(vehicleModel);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(vehicleModel);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.
+                ModelState.AddModelError("", "Unable to save changes. " +
+                    "Try again, and if the problem persists " +
+                    "see your system administrator.");
             }
             ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
             return View(vehicleModel);
@@ -89,41 +137,39 @@ namespace Coreapp.Controllers
         // POST: VehicleModels/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+        [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,MakeId,Name,Abrv")] VehicleModel vehicleModel)
+        public async Task<IActionResult> EditPost(int? id)
         {
-            if (id != vehicleModel.Id)
+
+            if (id == null)
             {
                 return NotFound();
             }
-
-            if (ModelState.IsValid)
+            var modelToUpdate = await _context.VehicleModels.FirstOrDefaultAsync(m => m.Id == id);
+            if(await TryUpdateModelAsync<VehicleModel>(modelToUpdate,"",m => m.Name, m=> m.Abrv))
+           
             {
                 try
                 {
-                    _context.Update(vehicleModel);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateException /* ex */)
                 {
-                    if (!VehicleModelExists(vehicleModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    //Log the error (uncomment ex variable name and write a log.)
+                    ModelState.AddModelError("", "Unable to save changes. " +
+                        "Try again, and if the problem persists, " +
+                        "see your system administrator.");
                 }
-                return RedirectToAction(nameof(Index));
+                
             }
-            ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
-            return View(vehicleModel);
+            //ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
+            return View(modelToUpdate);
         }
 
         // GET: VehicleModels/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, bool? saveChangesError = false)
         {
             if (id == null)
             {
@@ -132,12 +178,18 @@ namespace Coreapp.Controllers
 
             var vehicleModel = await _context.VehicleModels
                 .Include(v => v.Make)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (vehicleModel == null)
             {
                 return NotFound();
             }
-
+            if (saveChangesError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] =
+                    "Delete failed. Try again, and if the problem persists " +
+                    "see your system administrator.";
+            }
             return View(vehicleModel);
         }
 
@@ -147,9 +199,22 @@ namespace Coreapp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var vehicleModel = await _context.VehicleModels.FindAsync(id);
-            _context.VehicleModels.Remove(vehicleModel);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            if(vehicleModel == null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            try
+            {
+                _context.VehicleModels.Remove(vehicleModel);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                return RedirectToAction(nameof(Delete), new { id, saveChangesError = true });
+            }
+
         }
 
         private bool VehicleModelExists(int id)

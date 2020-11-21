@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Coreapp.Data;
 using Coreapp.Models;
+using Coreapp.Paging;
 
 namespace Coreapp.Controllers
 {
@@ -20,9 +21,41 @@ namespace Coreapp.Controllers
         }
 
         // GET: VehicleMakes
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string sortOrder, string searchString, string currentFilter, int? pageNumber)
         {
-            return View(await _context.VehicleMakes.ToListAsync());
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["AbrvSortParm"] = sortOrder == "Abrv" ? "abrv_desc" : "Abrv";
+
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+
+            var makes = from m in _context.VehicleMakes
+                           select m;
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                makes = makes.Where(m => m.Name.Contains(searchString) 
+                                    || m.Abrv.Contains(searchString));
+
+            }
+            makes = sortOrder switch
+            {
+                "name_desc" => makes.OrderByDescending(m => m.Name),
+                "Abrv" => makes.OrderBy(m => m.Abrv),
+                "abrv_desc" => makes.OrderByDescending(m => m.Abrv),
+                _ => makes.OrderBy(m => m.Name),
+            };
+            int pageSize = 5;
+            return View(await PaginatedList<VehicleMake>.CreateAsync(makes.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: VehicleMakes/Details/5
@@ -34,6 +67,8 @@ namespace Coreapp.Controllers
             }
 
             var vehicleMake = await _context.VehicleMakes
+                .Include(s => s.VehicleModels)            
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (vehicleMake == null)
             {
@@ -54,13 +89,23 @@ namespace Coreapp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,Abrv")] VehicleMake vehicleMake)
+        public async Task<IActionResult> Create([Bind("Name,Abrv")] VehicleMake vehicleMake)
         {
-            if (ModelState.IsValid)
+            try
             {
-                _context.Add(vehicleMake);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(vehicleMake);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (DbUpdateException)
+            {
+                //Log the error (uncomment ex variable name and write a log.
+                ModelState.AddModelError("", "Unable to save changes. " +
+                    "Try again, and if the problem persists " +
+                    "see your system administrator.");
             }
             return View(vehicleMake);
         }
@@ -84,40 +129,72 @@ namespace Coreapp.Controllers
         // POST: VehicleMakes/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+
+        [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Abrv")] VehicleMake vehicleMake)
+        public async Task<IActionResult> EditPost(int? id)
         {
-            if (id != vehicleMake.Id)
+            if (id == null)
             {
                 return NotFound();
             }
-
-            if (ModelState.IsValid)
+            var makesToUpdate = await _context.VehicleMakes.FirstOrDefaultAsync(s => s.Id == id);
+            if (await TryUpdateModelAsync<VehicleMake>(
+                makesToUpdate,
+                "",
+                s => s.Name, s => s.Abrv))
             {
                 try
                 {
-                    _context.Update(vehicleMake);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateException /* ex */)
                 {
-                    if (!VehicleMakeExists(vehicleMake.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    //Log the error (uncomment ex variable name and write a log.)
+                    ModelState.AddModelError("", "Unable to save changes. " +
+                        "Try again, and if the problem persists, " +
+                        "see your system administrator.");
                 }
-                return RedirectToAction(nameof(Index));
             }
-            return View(vehicleMake);
+            return View(makesToUpdate);
         }
 
+        //the one before
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Abrv")] VehicleMake vehicleMake)
+        //{
+        //    if (id != vehicleMake.Id)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    if (ModelState.IsValid)
+        //    {
+        //        try
+        //        {
+        //            _context.Update(vehicleMake);
+        //            await _context.SaveChangesAsync();
+        //        }
+        //        catch (DbUpdateConcurrencyException)
+        //        {
+        //            if (!VehicleMakeExists(vehicleMake.Id))
+        //            {
+        //                return NotFound();
+        //            }
+        //            else
+        //            {
+        //                throw;
+        //            }
+        //        }
+        //        return RedirectToAction(nameof(Index));
+        //    }
+        //    return View(vehicleMake);
+        //}
+
         // GET: VehicleMakes/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, bool? saveChangesError=false)
         {
             if (id == null)
             {
@@ -125,12 +202,18 @@ namespace Coreapp.Controllers
             }
 
             var vehicleMake = await _context.VehicleMakes
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (vehicleMake == null)
             {
                 return NotFound();
             }
-
+            if (saveChangesError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] =
+                    "Delete failed. Try again, and if the problem persists " +
+                    "see your system administrator.";
+            }
             return View(vehicleMake);
         }
 
@@ -140,10 +223,22 @@ namespace Coreapp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var vehicleMake = await _context.VehicleMakes.FindAsync(id);
-            _context.VehicleMakes.Remove(vehicleMake);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
+            if(vehicleMake == null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            try
+            {
+                _context.VehicleMakes.Remove(vehicleMake);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch(DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                return RedirectToAction(nameof(Delete), new { id, saveChangesError = true });
+            }
+            }
 
         private bool VehicleMakeExists(int id)
         {
