@@ -8,16 +8,18 @@ using Microsoft.EntityFrameworkCore;
 using Coreapp.Data;
 using Coreapp.Models;
 using Coreapp.Paging;
+using Coreapp.Models.Repository;
 
 namespace Coreapp.Controllers
 {
     public class VehicleMakesController : Controller
     {
-        private readonly VehicleDbContext _context;
+        private VehicleDbContext _context = new VehicleDbContext();
+        private readonly IMakeService _makeService;
 
-        public VehicleMakesController(VehicleDbContext context)
+        public VehicleMakesController(IMakeService makeService)
         {
-            _context = context;
+            _makeService = makeService; ;
         }
 
         // GET: VehicleMakes
@@ -38,24 +40,8 @@ namespace Coreapp.Controllers
 
             ViewData["CurrentFilter"] = searchString;
 
-            var makes = from m in _context.VehicleMakes
-                           select m;
-
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                makes = makes.Where(m => m.Name.Contains(searchString) 
-                                    || m.Abrv.Contains(searchString));
-
-            }
-            makes = sortOrder switch
-            {
-                "name_desc" => makes.OrderByDescending(m => m.Name),
-                "Abrv" => makes.OrderBy(m => m.Abrv),
-                "abrv_desc" => makes.OrderByDescending(m => m.Abrv),
-                _ => makes.OrderBy(m => m.Name),
-            };
             int pageSize = 5;
-            return View(await PaginatedList<VehicleMake>.CreateAsync(makes.AsNoTracking(), pageNumber ?? 1, pageSize));
+            return View(await _makeService.GetAllMakes(sortOrder, searchString, pageNumber, pageSize));
         }
 
         // GET: VehicleMakes/Details/5
@@ -67,9 +53,10 @@ namespace Coreapp.Controllers
             }
 
             var vehicleMake = await _context.VehicleMakes
-                .Include(s => s.VehicleModels)            
+                .Include(s => s.VehicleModels)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (vehicleMake == null)
             {
                 return NotFound();

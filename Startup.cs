@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Coreapp.Data;
+using Coreapp.Models.Repository;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -20,6 +21,7 @@ namespace Coreapp
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+           
         }
 
         public IConfiguration Configuration { get; }
@@ -30,7 +32,9 @@ namespace Coreapp
             services.AddDbContext<VehicleDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
-            
+            services.AddScoped<IMakeService, VehicleService>();
+            services.AddScoped<IModelService, VehicleService>();
+            services.AddMvc();
             services.AddControllersWithViews();
 
             

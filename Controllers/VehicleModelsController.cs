@@ -8,16 +8,18 @@ using Microsoft.EntityFrameworkCore;
 using Coreapp.Data;
 using Coreapp.Models;
 using Coreapp.Paging;
+using Coreapp.Models.Repository;
 
 namespace Coreapp.Controllers
 {
     public class VehicleModelsController : Controller
     {
-        private readonly VehicleDbContext _context;
+        private VehicleDbContext _context = new VehicleDbContext();
+        private readonly IModelService _modelService;
 
-        public VehicleModelsController(VehicleDbContext context)
+        public VehicleModelsController(IModelService modelService)
         {
-            _context = context;
+            _modelService = modelService;
         }
 
         // GET: VehicleModels
@@ -37,28 +39,10 @@ namespace Coreapp.Controllers
                 searchString = currentFilter;
             }
 
-            ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentFilter"] = searchString;            
             
-            var models = from m in _context.VehicleModels.Include(m => m.Make) select m;
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                models = models.Where(m => m.Name.Contains(searchString)
-                                    || m.Abrv.Contains(searchString)
-                                    || m.Make.Name.Contains(searchString));
-            }
-           
-            models = sortOrder switch
-            {
-                "name_desc" => models.OrderByDescending(m => m.Name),
-                "make_desc" => models.OrderByDescending(m => m.Make),
-                "Abrv" => models.OrderBy(m => m.Abrv),
-                "abrv_desc" => models.OrderByDescending(m => m.Abrv),
-                _ => models.OrderBy(m => m.Name),
-            };
             int pageSize = 5;
-            return View(await PaginatedList<VehicleModel>.CreateAsync(models.AsNoTracking(), pageNumber ?? 1, pageSize));
-
-
+            return View(await _modelService.GetAllModels(sortOrder, searchString, pageNumber ?? 1, pageSize));
 
 
         }

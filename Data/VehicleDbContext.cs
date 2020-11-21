@@ -9,12 +9,23 @@ namespace Coreapp.Data
 {
     public class VehicleDbContext : DbContext
     {
+        public VehicleDbContext()
+        {
+        }
+
         public VehicleDbContext(DbContextOptions<VehicleDbContext> options) : base(options)
         {
             
 
         }
-
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if(!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=VehicleAppDB;Trusted_Connection=True;MultipleActiveResultSets=true",
+                    builder => builder.EnableRetryOnFailure());
+            }
+        }
         public DbSet<VehicleMake> VehicleMakes { get; set; }
         public DbSet<VehicleModel> VehicleModels { get; set; }
 
