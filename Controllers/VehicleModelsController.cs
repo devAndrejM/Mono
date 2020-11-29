@@ -1,71 +1,55 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Coreapp.Data;
 using Coreapp.Models;
-using Coreapp.Paging;
 using Coreapp.Models.Repository;
+using AutoMapper;
+using Coreapp.ViewModels;
+using Coreapp.CRUD;
+
 
 namespace Coreapp.Controllers
 {
     public class VehicleModelsController : Controller
     {
-        private VehicleDbContext _context = new VehicleDbContext();
-        private readonly IModelService _modelService;
+        private readonly VehicleDbContext _context;
+        private readonly IVehicleService _modelService;
+        private readonly IMapper _mapper;
+        private PaginatedList<VehicleModelView> vehicleModels;
 
-        public VehicleModelsController(IModelService modelService)
+        public VehicleModelsController(VehicleDbContext context, IVehicleService modelService, IMapper mapper)
         {
+            _context = context;
             _modelService = modelService;
+            _mapper = mapper;
         }
 
         // GET: VehicleModels
-        public async Task<IActionResult> Index(string sortOrder, string searchString, string currentFilter, int? pageNumber)
+        public async Task<IActionResult> Index(Sorting sort, Filtering filter, int? pageNumber)
         {
-            ViewData["CurrentSort"] = sortOrder;
-            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["MakeSortParm"] = String.IsNullOrEmpty(sortOrder) ? "make_desc" : "";
-            ViewData["AbrvSortParm"] = sortOrder == "Abrv" ? "abrv_desc" : "Abrv";
+            sort = new Sorting(sort.SortOrder);
+            filter = new Filtering(filter.SearchString, filter.CurrentFilter);
 
-            if (searchString != null)
-            {
-                pageNumber = 1;
-            }
-            else
-            {
-                searchString = currentFilter;
-            }
+            ViewBag.CurrentSort = sort.SortOrder;
+            ViewBag.sortByMake = sort.SortOrder == "make_desc" ? "make_asc" : "make_desc";
+            ViewBag.sortByName = string.IsNullOrEmpty(sort.SortOrder) ? "name_desc" : "";
+            ViewBag.sortByAbrv = sort.SortOrder == "abrv_desc" ? "abrv_asc" : "abrv_desc";
+            ViewBag.CurrentFilter = filter.SearchString;
 
-            ViewData["CurrentFilter"] = searchString;            
+            var models = await _modelService.GetAllModels(sort, filter, pageNumber);
             
-            int pageSize = 5;
-            return View(await _modelService.GetAllModels(sortOrder, searchString, pageNumber ?? 1, pageSize));
+            
+            vehicleModels = new PaginatedList<VehicleModelView>(_mapper.Map<List<VehicleModelView>>(models), models.Count, models.PageIndex ?? 1, models.PageSize);                         
+
+            return View(vehicleModels);
 
 
         }
 
-        // GET: VehicleModels/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var vehicleModel = await _context.VehicleModels
-                .Include(v => v.Make)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (vehicleModel == null)
-            {
-                return NotFound();
-            }
-
-            return View(vehicleModel);
-        }
+        
 
         // GET: VehicleModels/Create
         public IActionResult Create()
@@ -85,8 +69,9 @@ namespace Coreapp.Controllers
             {
                 if (ModelState.IsValid)
                 {
-                    _context.Add(vehicleModel);
-                    await _context.SaveChangesAsync();
+                    
+                    await _modelService.AddModel(vehicleModel);
+                    
                     return RedirectToAction(nameof(Index));
                 }
             }
@@ -98,24 +83,27 @@ namespace Coreapp.Controllers
                     "see your system administrator.");
             }
             ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
-            return View(vehicleModel);
+            var model = _mapper.Map<VehicleModelView>(vehicleModel);
+            return View(model);
         }
 
         // GET: VehicleModels/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
+            var vehicleModel = await _modelService.GetModelById(id);
             if (id == null)
             {
                 return NotFound();
             }
-
-            var vehicleModel = await _context.VehicleModels.FindAsync(id);
+           
+            
             if (vehicleModel == null)
             {
                 return NotFound();
             }
             ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
-            return View(vehicleModel);
+            var model = _mapper.Map<VehicleModelView>(vehicleModel);
+            return View(model);
         }
 
         // POST: VehicleModels/Edit/5
@@ -123,33 +111,31 @@ namespace Coreapp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPost(int? id)
+        public async Task<IActionResult> EditPost(int id, [Bind("MakeId,Name,Abrv")] VehicleModel vehicleModel)
         {
 
-            if (id == null)
+            
+            try
             {
-                return NotFound();
-            }
-            var modelToUpdate = await _context.VehicleModels.FirstOrDefaultAsync(m => m.Id == id);
-            if(await TryUpdateModelAsync<VehicleModel>(modelToUpdate,"",m => m.Name, m=> m.Abrv))
-           
-            {
-                try
+                if (ModelState.IsValid)
                 {
-                    await _context.SaveChangesAsync();
+
+                    await _modelService.UpdateModel(vehicleModel);
+
                     return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateException /* ex */)
-                {
-                    //Log the error (uncomment ex variable name and write a log.)
-                    ModelState.AddModelError("", "Unable to save changes. " +
-                        "Try again, and if the problem persists, " +
-                        "see your system administrator.");
-                }
-                
             }
-            //ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
-            return View(modelToUpdate);
+            catch (DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                ModelState.AddModelError("", "Unable to save changes. " +
+                    "Try again, and if the problem persists, " +
+                    "see your system administrator.");
+            }
+                
+            
+            ViewData["MakeId"] = new SelectList(_context.VehicleMakes, "Id", "Name", vehicleModel.MakeId);
+            return View(vehicleModel);
         }
 
         // GET: VehicleModels/Delete/5
@@ -160,10 +146,8 @@ namespace Coreapp.Controllers
                 return NotFound();
             }
 
-            var vehicleModel = await _context.VehicleModels
-                .Include(v => v.Make)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var vehicleModel = await _modelService.GetModelById(id);
+            
             if (vehicleModel == null)
             {
                 return NotFound();
@@ -174,6 +158,7 @@ namespace Coreapp.Controllers
                     "Delete failed. Try again, and if the problem persists " +
                     "see your system administrator.";
             }
+            
             return View(vehicleModel);
         }
 
@@ -182,15 +167,10 @@ namespace Coreapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var vehicleModel = await _context.VehicleModels.FindAsync(id);
-            if(vehicleModel == null)
-            {
-                return RedirectToAction(nameof(Index));
-            }
+            
             try
             {
-                _context.VehicleModels.Remove(vehicleModel);
-                await _context.SaveChangesAsync();
+                await _modelService.DeleteModel(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (DbUpdateException /* ex */)
@@ -201,9 +181,9 @@ namespace Coreapp.Controllers
 
         }
 
-        private bool VehicleModelExists(int id)
-        {
-            return _context.VehicleModels.Any(e => e.Id == id);
-        }
+        //private bool VehicleModelExists(int id)
+        //{
+        //    return _context.VehicleModels.Any(e => e.Id == id);
+        //}
     }
 }

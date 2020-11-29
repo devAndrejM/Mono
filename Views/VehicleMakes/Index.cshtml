@@ -1,4 +1,4 @@
-﻿@model Coreapp.Paging.PaginatedList<Coreapp.Models.VehicleMake> 
+﻿@model Coreapp.CRUD.PaginatedList<Coreapp.ViewModels.VehicleMakeView> 
 
 @{
     ViewData["Title"] = "Index";
@@ -10,7 +10,7 @@
 <form asp-action="Index" method="get">
     <div class="form-actions no-color">
         <p>
-            Find by name: <input type="text" name="SearchString" value="@ViewData["CurrentFilter"]" />
+            Find by make: <input type="text" name="SearchString" value="@ViewBag.CurrentFilter" />
             <input type="submit" value="Search" class="btn btn-default" /> |
             <a asp-action="Index">Back to Full List</a>
         </p>
@@ -21,11 +21,11 @@
     <thead>
         <tr>
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["NameSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Make Name</a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewBag.sortByName" asp-route-currentFilter="@ViewBag.CurrentFilter">Make Name</a>
             </th>
 
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["AbrvSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Abbreviation</a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewBag.sortByAbrv" asp-route-currentFilter="@ViewBag.CurrentFilter">Abbreviation</a>
             </th>
 
             <th></th>
@@ -59,16 +59,16 @@
 }
 
 <a asp-action="Index"
-   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-sortOrder="@ViewBag.CurrentSort"
    asp-route-pageNumber="@(Model.PageIndex - 1)"
-   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-currentFilter="@ViewBag.CurrentFilter"
    class="btn btn-default @prevDisabled">
     Previous
 </a>
 <a asp-action="Index"
-   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-sortOrder="@ViewBag.CurrentSort"
    asp-route-pageNumber="@(Model.PageIndex + 1)"
-   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-currentFilter="@ViewBag.CurrentFilter"
    class="btn btn-default @nextDisabled">
     Next
 </a>

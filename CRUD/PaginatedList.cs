@@ -4,20 +4,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Coreapp.Paging
+namespace Coreapp.CRUD
 {
     public class PaginatedList<T> : List<T>
     {
-        public int PageIndex { get; private set; }
-        public int TotalPages { get; private set; }
+        public int? PageIndex { get; set; }
+        public int TotalPages { get; set; }
+        public int PageSize { get; set; }
+        public IEnumerable<T> Data { get; set; }
+        public new int Count { get; set; }
 
-        public PaginatedList(List<T> items, int count, int pageIndex, int pageSize)
+        public PaginatedList() { }
+
+        public PaginatedList(IEnumerable<T> items, int count, int? pageIndex, int pageSize)
         {
+            Data = items;
             PageIndex = pageIndex;
+            PageSize = pageSize;
+            Count = count;
             TotalPages = (int)Math.Ceiling(count / (double)pageSize);
-
-            this.AddRange(items);
+            AddRange(items);
         }
+
+        
 
         public bool HasPreviousPage
         {
@@ -41,5 +50,6 @@ namespace Coreapp.Paging
             var items = await source.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToListAsync();
             return new PaginatedList<T>(items, count, pageIndex, pageSize);
         }
+
     }
 }

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
+using Coreapp.Automapper;
 using Coreapp.Data;
 using Coreapp.Models.Repository;
 using Microsoft.AspNetCore.Builder;
@@ -32,9 +34,9 @@ namespace Coreapp
             services.AddDbContext<VehicleDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddScoped<IMakeService, VehicleService>();
-            services.AddScoped<IModelService, VehicleService>();
+            services.AddScoped<IVehicleService, VehicleService>();            
             services.AddMvc();
+            services.AddAutoMapper(typeof(AutoMapperProfile));
             services.AddControllersWithViews();
 
             

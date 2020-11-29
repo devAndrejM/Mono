@@ -1,68 +1,60 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Coreapp.Data;
 using Coreapp.Models;
-using Coreapp.Paging;
 using Coreapp.Models.Repository;
+using AutoMapper;
+using Coreapp.ViewModels;
+using Coreapp.CRUD;
+
 
 namespace Coreapp.Controllers
 {
     public class VehicleMakesController : Controller
     {
-        private VehicleDbContext _context = new VehicleDbContext();
-        private readonly IMakeService _makeService;
+        
+        private readonly IVehicleService _makeService;
+        private readonly IMapper _mapper;
+        private PaginatedList<VehicleMakeView> vehicleMakes;
 
-        public VehicleMakesController(IMakeService makeService)
+        public VehicleMakesController(IVehicleService makeService, IMapper mapper)
         {
             _makeService = makeService; ;
+            _mapper = mapper;            
+            
         }
 
         // GET: VehicleMakes
-        public async Task<IActionResult> Index(string sortOrder, string searchString, string currentFilter, int? pageNumber)
+        public async Task<IActionResult> Index(Sorting sort, Filtering filter, int? pageNumber)
         {
-            ViewData["CurrentSort"] = sortOrder;
-            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["AbrvSortParm"] = sortOrder == "Abrv" ? "abrv_desc" : "Abrv";
+            sort = new Sorting(sort.SortOrder);
+            filter = new Filtering(filter.SearchString, filter.CurrentFilter);
 
-            if (searchString != null)
-            {
-                pageNumber = 1;
-            }
-            else
-            {
-                searchString = currentFilter;
-            }
+            ViewBag.CurrentSort = sort.SortOrder;
+            ViewBag.sortByName = string.IsNullOrEmpty(sort.SortOrder) ? "name_desc" : "";
+            ViewBag.sortByAbrv = sort.SortOrder == "abrv_desc" ? "abrv_asc" : "abrv_desc";
+            ViewBag.CurrentFilter = filter.SearchString;
+            
+            var makes = await _makeService.GetAllMakes(sort, filter, pageNumber);
 
-            ViewData["CurrentFilter"] = searchString;
+            vehicleMakes = new PaginatedList<VehicleMakeView>(_mapper.Map<List<VehicleMakeView>>(makes),makes.Count, makes.PageIndex ?? 1, makes.PageSize);
 
-            int pageSize = 5;
-            return View(await _makeService.GetAllMakes(sortOrder, searchString, pageNumber, pageSize));
+            return View(vehicleMakes);
         }
 
         // GET: VehicleMakes/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var vehicleMake = await _context.VehicleMakes
-                .Include(s => s.VehicleModels)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id);
-
+            var vehicleMake = await _makeService.GetMakeById(id);
+            vehicleMake.VehicleModels = await _makeService.GetModelsByMakeId(id);
             if (vehicleMake == null)
             {
                 return NotFound();
             }
-
-            return View(vehicleMake);
+            var makeView = _mapper.Map<VehicleMakeView>(vehicleMake);
+            return View(makeView);
+            
         }
 
         // GET: VehicleMakes/Create
@@ -82,8 +74,9 @@ namespace Coreapp.Controllers
             {
                 if (ModelState.IsValid)
                 {
-                    _context.Add(vehicleMake);
-                    await _context.SaveChangesAsync();
+                    
+                    await _makeService.AddMake(vehicleMake);
+                    
                     return RedirectToAction(nameof(Index));
                 }
             }
@@ -94,23 +87,25 @@ namespace Coreapp.Controllers
                     "Try again, and if the problem persists " +
                     "see your system administrator.");
             }
-            return View(vehicleMake);
+            var create = _mapper.Map<VehicleMakeView>(vehicleMake);
+            return View(create);
         }
 
         // GET: VehicleMakes/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
+            var vehicleMake = await _makeService.GetMakeById(id);
             if (id == null)
             {
                 return NotFound();
             }
-
-            var vehicleMake = await _context.VehicleMakes.FindAsync(id);
+            var make = _mapper.Map<VehicleMakeView>(vehicleMake);
+            
             if (vehicleMake == null)
             {
                 return NotFound();
             }
-            return View(vehicleMake);
+            return View(make);
         }
 
         // POST: VehicleMakes/Edit/5
@@ -119,21 +114,18 @@ namespace Coreapp.Controllers
 
         [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPost(int? id)
+        public async Task<IActionResult> EditPost(int? id, [Bind("Id,Name,Abrv")] VehicleMake vehicleMake)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-            var makesToUpdate = await _context.VehicleMakes.FirstOrDefaultAsync(s => s.Id == id);
-            if (await TryUpdateModelAsync<VehicleMake>(
-                makesToUpdate,
-                "",
-                s => s.Name, s => s.Abrv))
-            {
+            
+           {
+                var make = await _makeService.GetMakeById(id);
+                if(make.Id != id)
+                {
+                    return NotFound();
+                }
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await _makeService.UpdateMake(vehicleMake);
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateException /* ex */)
@@ -143,43 +135,13 @@ namespace Coreapp.Controllers
                         "Try again, and if the problem persists, " +
                         "see your system administrator.");
                 }
+                
             }
-            return View(makesToUpdate);
+            var edited = _mapper.Map<VehicleMakeView>(vehicleMake);
+            return View(edited);
         }
 
-        //the one before
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Abrv")] VehicleMake vehicleMake)
-        //{
-        //    if (id != vehicleMake.Id)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    if (ModelState.IsValid)
-        //    {
-        //        try
-        //        {
-        //            _context.Update(vehicleMake);
-        //            await _context.SaveChangesAsync();
-        //        }
-        //        catch (DbUpdateConcurrencyException)
-        //        {
-        //            if (!VehicleMakeExists(vehicleMake.Id))
-        //            {
-        //                return NotFound();
-        //            }
-        //            else
-        //            {
-        //                throw;
-        //            }
-        //        }
-        //        return RedirectToAction(nameof(Index));
-        //    }
-        //    return View(vehicleMake);
-        //}
-
+       
         // GET: VehicleMakes/Delete/5
         public async Task<IActionResult> Delete(int? id, bool? saveChangesError=false)
         {
@@ -188,9 +150,8 @@ namespace Coreapp.Controllers
                 return NotFound();
             }
 
-            var vehicleMake = await _context.VehicleMakes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var vehicleMake = await _makeService.GetMakeById(id);
+           
             if (vehicleMake == null)
             {
                 return NotFound();
@@ -209,15 +170,11 @@ namespace Coreapp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var vehicleMake = await _context.VehicleMakes.FindAsync(id);
-            if(vehicleMake == null)
-            {
-                return RedirectToAction(nameof(Index));
-            }
+            
+            
             try
             {
-                _context.VehicleMakes.Remove(vehicleMake);
-                await _context.SaveChangesAsync();
+                await _makeService.DeleteMake(id);
                 return RedirectToAction(nameof(Index));
             }
             catch(DbUpdateException /* ex */)
@@ -227,9 +184,11 @@ namespace Coreapp.Controllers
             }
             }
 
-        private bool VehicleMakeExists(int id)
-        {
-            return _context.VehicleMakes.Any(e => e.Id == id);
-        }
+        //private bool VehicleMakeExists(int id)
+        //{
+        //    var vehicleMake = makeService.GetMakeById(id);
+            
+        //    return _context.VehicleMakes.Any(e => e.Id == id);
+        //}
     }
 }

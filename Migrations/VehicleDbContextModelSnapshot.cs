@@ -74,6 +74,30 @@ namespace Coreapp.Migrations
                             Id = 6,
                             Abrv = "Porsche",
                             Name = "Porsche AG"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Abrv = "Renault",
+                            Name = "Renault"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Abrv = "Škoda",
+                            Name = "Škoda Auto"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Abrv = "Audi",
+                            Name = "Audi AG"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Abrv = "VW",
+                            Name = "Volkswagen"
                         });
                 });
 
@@ -165,6 +189,132 @@ namespace Coreapp.Migrations
                             Abrv = "M-Class",
                             MakeId = 2,
                             Name = "ML400"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Abrv = "i8",
+                            MakeId = 1,
+                            Name = "i8"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Abrv = "Series-3",
+                            MakeId = 1,
+                            Name = "316"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Abrv = "Focus",
+                            MakeId = 3,
+                            Name = "Focus"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Abrv = "Ka",
+                            MakeId = 3,
+                            Name = "Ka"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Abrv = "ix35",
+                            MakeId = 4,
+                            Name = "ix35"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Abrv = "Kona",
+                            MakeId = 4,
+                            Name = "Kona"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Abrv = "3",
+                            MakeId = 5,
+                            Name = "323"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Abrv = "6",
+                            MakeId = 5,
+                            Name = "6"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Abrv = "Cayenne",
+                            MakeId = 6,
+                            Name = "Cayenne"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Abrv = "911",
+                            MakeId = 6,
+                            Name = "911"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Abrv = "Captur",
+                            MakeId = 7,
+                            Name = "Captur"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Abrv = "Scenic",
+                            MakeId = 7,
+                            Name = "Scenic"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Abrv = "Superb",
+                            MakeId = 8,
+                            Name = "Superb"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Abrv = "Octavia",
+                            MakeId = 8,
+                            Name = "Octavia"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Abrv = "A3",
+                            MakeId = 9,
+                            Name = "A3"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Abrv = "A4",
+                            MakeId = 9,
+                            Name = "A4"
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Abrv = "Passsat",
+                            MakeId = 10,
+                            Name = "Passat"
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Abrv = "Arteon",
+                            MakeId = 10,
+                            Name = "Arteon"
                         });
                 });
 

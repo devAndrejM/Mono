@@ -1,5 +1,4 @@
-﻿@model Coreapp.Models.VehicleMake
-
+﻿@model Coreapp.ViewModels.VehicleMakeView
 @{
     ViewData["Title"] = "Details";
 }
@@ -7,7 +6,7 @@
 <h1>Details</h1>
 
 <div>
-    
+
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
@@ -29,14 +28,14 @@
             <table class="table">
                 <tr>
                     <th>Models List</th>
-                    </tr>
+                </tr>
                 @foreach (var item in Model.VehicleModels)
                 {
                     <tr>
                         <td>
                             @Html.DisplayFor(modelItem => item.Name)
                         </td>
-                        
+
                     </tr>
                 }
             </table>

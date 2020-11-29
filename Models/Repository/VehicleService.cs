@@ -1,5 +1,6 @@
-﻿using Coreapp.Data;
-using Coreapp.Paging;
+﻿using Coreapp.CRUD;
+using Coreapp.Data;
+using Coreapp.ViewModels;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Coreapp.Models.Repository
 {
-    public class VehicleService : IMakeService, IModelService
+    public class VehicleService : IVehicleService
     {
         private readonly VehicleDbContext db;
 
@@ -16,131 +17,139 @@ namespace Coreapp.Models.Repository
         {
             db = _db;
         }
-        public async Task<int> AddMake(VehicleMake newMake)
-        {
-            if(db!=null)
-            {
+        public async Task<VehicleMake> AddMake(VehicleMake newMake)
+        {           
                 db.VehicleMakes.Add(newMake);
                 await db.SaveChangesAsync();
-                return newMake.Id;
-            }
-            return 0;
+                return newMake;            
         }
 
-        public async Task<int> AddModel(VehicleModel newModel)
+        public async Task<VehicleModel> AddModel(VehicleModel newModel)
         {
-            if (db != null)
-            {
-                db.VehicleModels.Add(newModel);
-                await db.SaveChangesAsync();
-                return newModel.Id;
-            }
-            return 0;
+            db.VehicleModels.Add(newModel);
+            await db.SaveChangesAsync();
+            return newModel;
         }
 
-        public async Task<int> DeleteMake(int? makeId)
+        public async Task<VehicleMake> DeleteMake(int? makeId)
         {
-            int result = 0;
-            if (db != null)
-            {                
-                var make = await db.VehicleMakes.FirstOrDefaultAsync(m => m.Id == makeId);
+            
+                VehicleMake make = await db.VehicleMakes.FirstOrDefaultAsync(m => m.Id == makeId);
                 if (make != null)
                 {
-                    db.VehicleMakes.Remove(make);
-                    result = await db.SaveChangesAsync();
+                    db.Remove(make);
+                    await db.SaveChangesAsync();
                 }
-                return result;
-            }
-            return result;
+            return make;
         }
-    
 
-        public async Task<int> DeleteModel(int? modelId)
+        public async Task<VehicleModel> DeleteModel(int? modelId)
         {
-        int result = 0;
-        if (db != null)
-        {
-            var model = await db.VehicleModels.FirstOrDefaultAsync(m => m.Id == modelId);
+            VehicleModel model = await db.VehicleModels.FirstOrDefaultAsync(m => m.Id == modelId);
             if (model != null)
             {
-                db.VehicleModels.Remove(model);
-                result = await db.SaveChangesAsync();
-            }
-            return result;
-        }
-        return result;
-    }
-
-
-        public async Task<List<VehicleMake>> GetAllMakes(string sortOrder, string searchString, int? pageNumber, int pageSize)
-        {
-            if(db !=null)
-            {
-                var makes = from m in db.VehicleMakes
-                            select m;
-                if (!String.IsNullOrEmpty(searchString))
-                {
-                    makes = makes.Where(m => m.Name.Contains(searchString)
-                                        || m.Abrv.Contains(searchString));
-
-                }
-                makes = sortOrder switch
-                {
-                    "name_desc" => makes.OrderByDescending(m => m.Name),
-                    "Abrv" => makes.OrderBy(m => m.Abrv),
-                    "abrv_desc" => makes.OrderByDescending(m => m.Abrv),
-                    _ => makes.OrderBy(m => m.Name),
-                };
-                return await PaginatedList<VehicleMake>.CreateAsync(makes.AsNoTracking(), pageNumber ?? 1, pageSize);
-            }
-            return null;
-        }
-
-        public async Task<List<VehicleModel>> GetAllModels(string sortOrder, string searchString, int? pageNumber, int pageSize)
-        {
-            if(db != null)
-            {
-                var models = from m in db.VehicleModels.Include(m => m.Make) select m;
-                if (!String.IsNullOrEmpty(searchString))
-                {
-                    models = models.Where(m => m.Name.Contains(searchString)
-                                        || m.Abrv.Contains(searchString)
-                                        || m.Make.Name.Contains(searchString));
-                }
-
-                models = sortOrder switch
-                {
-                    "name_desc" => models.OrderByDescending(m => m.Name),
-                    "make_desc" => models.OrderByDescending(m => m.Make),
-                    "Abrv" => models.OrderBy(m => m.Abrv),
-                    "abrv_desc" => models.OrderByDescending(m => m.Abrv),
-                    _ => models.OrderBy(m => m.Name),
-                };
-                return await PaginatedList<VehicleModel>.CreateAsync(models.AsNoTracking(), pageNumber ?? 1, pageSize);
-            }
-            return null;
-        }
-
-        public async Task<int> UpdateMake(VehicleMake editMake)
-        {
-            if(db != null)
-            {
-                db.Entry(editMake).State = EntityState.Modified;
+                db.Remove(model);
                 await db.SaveChangesAsync();
-                return editMake.Id;
             }
-            return 0;
+            return model;
         }
 
-        public async Task<int> UpdateModel(VehicleModel editModel)
+        public async Task<PaginatedList<VehicleMake>> GetAllMakes(Sorting sort, Filtering filter, int? pageNumber)
         {
-            if (db != null)
+            var makes = from m in db.VehicleMakes
+                        select m;
+
+            if (filter.SearchString != null)
             {
-                db.Entry(editModel).State = EntityState.Modified;
-                await db.SaveChangesAsync();
-                return editModel.Id;
+                pageNumber = 1;
             }
-            return 0;
+            else
+            {
+                filter.SearchString = filter.CurrentFilter;
+            }
+
+            if (!String.IsNullOrEmpty(filter.SearchString))
+            {
+                makes = makes.Where(m => m.Name.Contains(filter.SearchString)
+                                    || m.Abrv.Contains(filter.SearchString));
+
+            }
+            makes = sort.SortOrder switch
+            {
+                "name_desc" => makes.OrderByDescending(m => m.Name),
+                "Abrv" => makes.OrderBy(m => m.Abrv),
+                "abrv_desc" => makes.OrderByDescending(m => m.Abrv),
+                _ => makes.OrderBy(m => m.Name),
+            };
+            
+            int pageSize = 8;
+
+            return await PaginatedList<VehicleMake>.CreateAsync(makes.AsNoTracking(), pageNumber ?? 1, pageSize);
+
+        }
+
+        public async Task<PaginatedList<VehicleModel>> GetAllModels(Sorting sort, Filtering filter, int? pageNumber)
+        {
+            var models = from m in db.VehicleModels.Include(m => m.Make) select m;
+
+            if (filter.SearchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                filter.SearchString = filter.CurrentFilter;
+            }
+
+            if (!String.IsNullOrEmpty(filter.SearchString))
+            {
+                models = models.Where(m => m.Name.Contains(filter.SearchString)
+                                    || m.Abrv.Contains(filter.SearchString)
+                                    || m.Make.Name.Contains(filter.SearchString));
+            }
+
+            models = sort.SortOrder switch
+            {
+                "name_desc" => models.OrderByDescending(m => m.Name),
+                "make_desc" => models.OrderByDescending(m => m.Make),
+                "Abrv" => models.OrderBy(m => m.Abrv),
+                "abrv_desc" => models.OrderByDescending(m => m.Abrv),
+                _ => models.OrderBy(m => m.Name),
+            };
+            
+            int pageSize = 8;
+
+            return await PaginatedList<VehicleModel>.CreateAsync(models.AsNoTracking(), pageNumber ?? 1, pageSize);
+
+        }
+
+        public async Task<VehicleMake> GetMakeById(int? makeId)
+        {
+            return await db.VehicleMakes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == makeId);
+        }
+
+        public async Task<VehicleModel> GetModelById(int? modelId)
+        {
+            return await db.VehicleModels.AsNoTracking().FirstOrDefaultAsync(x => x.Id == modelId);
+        }
+
+        public async Task<IEnumerable<VehicleModel>> GetModelsByMakeId(int? makeId)
+        {
+            return await db.VehicleModels.Where(m => m.MakeId == makeId).ToListAsync();
+        }
+
+        public async Task<VehicleMake> UpdateMake(VehicleMake editMake)
+        {
+            db.Entry(editMake).State = EntityState.Modified;
+            await db.SaveChangesAsync();
+            return editMake;
+        }
+
+        public async Task<VehicleModel> UpdateModel(VehicleModel editModel)
+        {
+            db.Entry(editModel).State = EntityState.Modified;
+            await db.SaveChangesAsync();
+            return editModel;
         }
     }
 }

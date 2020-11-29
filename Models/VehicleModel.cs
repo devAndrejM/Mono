@@ -16,7 +16,7 @@ namespace Coreapp.Models
         public int MakeId { get; set; }
         [Required(ErrorMessage = "Required")]
         [StringLength(50, ErrorMessage = "Maximum 50 letters")]
-        [Display(Name="Make Name")]
+        [Display(Name="Model Name")]
         public string Name { get; set; }
         [StringLength(30, ErrorMessage = "Abbreviation should be shorther than name. Max. of 30 letters!")]
         [Display(Name = "Abbreviation")]
@@ -26,19 +26,3 @@ namespace Coreapp.Models
     }
 
 }
-
-//using System;
-//using System.Collections.Generic;
-
-//namespace ContosoUniversity.Models
-//{
-//    public class Student
-//    {
-//        public int ID { get; set; }
-//        public string LastName { get; set; }
-//        public string FirstMidName { get; set; }
-//        public DateTime EnrollmentDate { get; set; }
-
-//        public ICollection<Enrollment> Enrollments { get; set; }
-//    }
-//}

@@ -1,4 +1,4 @@
-﻿@model Coreapp.Paging.PaginatedList<Coreapp.Models.VehicleModel>
+﻿@model Coreapp.CRUD.PaginatedList<Coreapp.ViewModels.VehicleModelView>
 
 @{
     ViewData["Title"] = "Index";
@@ -7,7 +7,7 @@
 <form asp-action="Index" method="get">
     <div class="form-actions no-color">
         <p>
-            Find by name: <input type="text" name="SearchString" value="@ViewData["CurrentFilter"]" />
+            Find by make or model: <input type="text" name="SearchString" value="@ViewBag.CurrentFilter" />
             <input type="submit" value="Search" class="btn btn-default" /> |
             <a asp-action="Index">Back to Full List</a>
         </p>
@@ -18,14 +18,14 @@
     <thead>
         <tr>
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["NameSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Model Name</a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewBag.sortByModel" asp-route-currentFilter="@ViewBag.CurrentFilter">Model</a>
             </th>
 
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["AbrvSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Abbreviation</a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewBag.sortByAbrv" asp-route-currentFilter="@ViewBag.CurrentFilter">Abbreviation</a>
             </th>
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["MakeSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Make Name</a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewBag.sortByMake" asp-route-currentFilter="@ViewBag.CurrentFilter">Make Name</a>
             </th>
 
             <th></th>
@@ -46,7 +46,6 @@
                 </td>
                 <td>
                     <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
                     <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
                 </td>
             </tr>
@@ -56,22 +55,22 @@
 <p>
     <a asp-action="Create">Add new Model</a>
 </p>
-@{ 
+@{
     var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
     var nextDisabled = !Model.HasNextPage ? "disabled" : "";
 }
 
 <a asp-action="Index"
-   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-sortOrder="@ViewBag.CurrentSort"
    asp-route-pageNumber="@(Model.PageIndex - 1)"
-   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-currentFilter="@ViewBag.CurrentFilter"
    class="btn btn-default @prevDisabled">
     Previous
 </a>
 <a asp-action="Index"
-   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-sortOrder="@ViewBag.CurrentSort"
    asp-route-pageNumber="@(Model.PageIndex + 1)"
-   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-currentFilter="@ViewBag.CurrentFilter"
    class="btn btn-default @nextDisabled">
     Next
 </a>
